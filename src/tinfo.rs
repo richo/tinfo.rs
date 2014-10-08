@@ -113,6 +113,7 @@ fn output_to_windows(rdr: &str) -> WindowList {
     return windows;
 }
 
+#[allow(unused_variable)]
 fn main() {
     let out = match Command::new("tmux").arg("list-windows").arg("-a").spawn() {
         Ok(process) => {
