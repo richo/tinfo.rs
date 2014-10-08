@@ -1,5 +1,6 @@
 tinfo
 =====
+
 It seemed funny to rewrite [tinfo][tinfo-python] in rust.
 
 Kapow.
