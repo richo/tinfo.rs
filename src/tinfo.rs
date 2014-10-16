@@ -47,6 +47,7 @@ trait WindowSearch {
     fn select_tabs(&self, searchterm: &str) -> Self;
     fn insert_or_push(&mut self, win: uint, tab: Tab);
     fn dump(&self);
+    fn get_cmd(&self);
 }
 
 impl WindowSearch for WindowList {
@@ -55,6 +56,24 @@ impl WindowSearch for WindowList {
             println!("Session: {}", idx);
             for tab in window.tabs.iter() {
                 println!("  {}: {}", tab.number, tab.name);
+            }
+        }
+    }
+
+    fn get_cmd(&self) {
+        if self.len() != 1 {
+            fail!("Can only get with a single result");
+        }
+
+        for (idx, window) in self.iter() {
+            if window.tabs.len() != 1 {
+                fail!("Can only get with a single result");
+            }
+
+            for tab in window.tabs.iter() {
+                Command::new("tmux").arg("move-window").arg("-s")
+                    .arg(format!("{}:{}", idx, tab.number)).spawn();
+                return;
             }
         }
     }
@@ -118,9 +137,15 @@ fn main() {
     let out = match Command::new("tmux").arg("list-windows").arg("-a").spawn() {
         Ok(process) => {
             let ProcessOutput { status, output, error } =
-                process.wait_with_output().unwrap();
+                match process.wait_with_output() {
+                    Ok(o) => o,
+                    _ => fail!("Couldn't read tmux list-windows output"),
+                };
 
-             String::from_utf8(output).unwrap()
+            match String::from_utf8(output) {
+                Ok(o) => o,
+                _ => fail!("tmux list-windows did not emit valid utf8"),
+            }
         },
         Err(e) => fail!("failed to spawn: {}", e),
     };
@@ -132,7 +157,10 @@ fn main() {
         1 => windows.dump(),
         2 => {
             let searched = windows.select_tabs(std::os::args()[1].as_slice());
-            searched.dump();
+            match std::os::getenv("GET") {
+                Some(_) => searched.get_cmd(),
+                None => searched.dump(),
+            }
         },
         _ => fail!("Ooops"),
     }
