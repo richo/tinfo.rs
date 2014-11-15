@@ -6,7 +6,7 @@ extern crate regex;
 use std::io::Command;
 use std::io::Reader;
 use std::io::process::ProcessOutput;
-use std::collections::hashmap::HashMap;
+use std::collections::HashMap;
 struct Tab {
     name: String,
     number: uint,
@@ -62,12 +62,12 @@ impl WindowSearch for WindowList {
 
     fn get_cmd(&self) {
         if self.len() != 1 {
-            fail!("Can only get with a single result");
+            panic!("Can only get with a single result");
         }
 
         for (idx, window) in self.iter() {
             if window.tabs.len() != 1 {
-                fail!("Can only get with a single result");
+                panic!("Can only get with a single result");
             }
 
             for tab in window.tabs.iter() {
@@ -101,7 +101,7 @@ impl WindowSearch for WindowList {
     fn insert_or_push(&mut self, win: uint, tab: Tab) {
         // This is super lurky. Double borrow bug?
         if self.contains_key(&win) {
-            match self.find_mut(&win) {
+            match self.get_mut(&win) {
                 Some(window) => { window.push(tab); },
                 None => unreachable!()
             };
@@ -132,22 +132,22 @@ fn output_to_windows(rdr: &str) -> WindowList {
     return windows;
 }
 
-#[allow(unused_variable)]
+#[allow(unused_variables)]
 fn main() {
     let out = match Command::new("tmux").arg("list-windows").arg("-a").spawn() {
         Ok(process) => {
             let ProcessOutput { status, output, error } =
                 match process.wait_with_output() {
                     Ok(o) => o,
-                    _ => fail!("Couldn't read tmux list-windows output"),
+                    _ => panic!("Couldn't read tmux list-windows output"),
                 };
 
             match String::from_utf8(output) {
                 Ok(o) => o,
-                _ => fail!("tmux list-windows did not emit valid utf8"),
+                _ => panic!("tmux list-windows did not emit valid utf8"),
             }
         },
-        Err(e) => fail!("failed to spawn: {}", e),
+        Err(e) => panic!("failed to spawn: {}", e),
     };
 
     let windows = output_to_windows(out.as_slice());
@@ -162,6 +162,6 @@ fn main() {
                 None => searched.dump(),
             }
         },
-        _ => fail!("Ooops"),
+        _ => panic!("Ooops"),
     }
 }
