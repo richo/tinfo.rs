@@ -2,11 +2,13 @@
 #[phase(plugin)]
 extern crate regex_macros;
 extern crate regex;
+extern crate getopts;
 
 use std::io::Command;
 use std::io::Reader;
 use std::io::process::ProcessOutput;
 use std::collections::HashMap;
+use getopts::{optflag,getopts};
 struct Tab {
     name: String,
     number: uint,
@@ -152,16 +154,24 @@ fn main() {
 
     let windows = output_to_windows(out.as_slice());
 
-    match std::os::args().len() {
-        0 => unreachable!(),
-        1 => windows.dump(),
-        2 => {
-            let searched = windows.select_tabs(std::os::args()[1].as_slice());
-            match std::os::getenv("GET") {
-                Some(_) => searched.get_cmd(),
-                None => searched.dump(),
-            }
-        },
-        _ => panic!("Ooops"),
+    let args = std::os::args();
+    let opts = [
+        optflag("G", "get", "Bring matched window here"),
+    ];
+
+    let matches = match getopts(args.tail(), opts) {
+        Ok(m) => m,
+        Err(f) => panic!(f),
+    };
+
+    if !matches.free.is_empty() {
+        let searched = windows.select_tabs(matches.free[0].as_slice());
+        if matches.opt_present("G") {
+            searched.get_cmd();
+        } else {
+            searched.dump();
+        }
+    } else {
+        windows.dump();
     }
 }
