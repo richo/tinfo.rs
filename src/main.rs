@@ -1,8 +1,8 @@
-#![feature(phase)]
-#[phase(plugin)]
-extern crate regex_macros;
-extern crate regex;
 extern crate getopts;
+
+macro_rules! regex(
+    ($s:expr) => (regex::Regex::new($s).unwrap());
+);
 
 use std::io::Command;
 use std::io::Reader;

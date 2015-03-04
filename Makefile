@@ -1,5 +1,5 @@
-tinfo: src/tinfo.rs
-	rustc -o $@ $^
+target/tinfo: src/main.rs
+	cargo build
 
-install: tinfo
+install: target/tinfo
 	cp $< /usr/local/bin
