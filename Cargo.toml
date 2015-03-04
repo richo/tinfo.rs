@@ -3,6 +3,9 @@
 name = "tinfo"
 version = "0.0.1"
 authors = ["Richo Healey <richo@psych0tik.net>"]
+license = "MIT"
+repository = "https://github.com/richo/tinfo-rs"
+description = "A frontend to manipulating tmux"
 
 [dependencies]
 
