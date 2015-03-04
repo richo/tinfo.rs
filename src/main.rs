@@ -9,7 +9,7 @@ use std::old_io::Command;
 use std::old_io::Reader;
 use std::old_io::process::ProcessOutput;
 use std::collections::HashMap;
-use getopts::{optflag,getopts};
+use getopts::{OptGroup,optflag,getopts,usage};
 struct Tab {
     name: String,
     number: usize,
@@ -136,6 +136,11 @@ fn output_to_windows(rdr: &str) -> WindowList {
     return windows;
 }
 
+fn print_usage(opts: &[OptGroup]) {
+    let brief = "Usage: tinfo [options]";
+    println!("{}", usage(brief, opts));
+}
+
 #[allow(unused_variables)]
 fn main() {
     let out = match Command::new("tmux").arg("list-windows").arg("-a").spawn() {
@@ -159,12 +164,23 @@ fn main() {
     let args = std::os::args();
     let opts = [
         optflag("G", "get", "Bring matched window here"),
+        optflag("h", "help", "Show this help"),
     ];
 
     let matches = match getopts(args.tail(), &opts) {
         Ok(m) => m,
-        Err(f) => panic!(f),
+        Err(f) => {
+            println!("{}\n", f.to_string());
+            print_usage(&opts);
+            ::std::env::set_exit_status(1);
+            return;
+        }
     };
+
+    if matches.opt_present("h") {
+        print_usage(&opts);
+        return;
+    }
 
     if !matches.free.is_empty() {
         let searched = windows.select_tabs(matches.free[0].as_slice());
