@@ -1,23 +1,24 @@
+extern crate regex;
 extern crate getopts;
 
 macro_rules! regex(
     ($s:expr) => (regex::Regex::new($s).unwrap());
 );
 
-use std::io::Command;
-use std::io::Reader;
-use std::io::process::ProcessOutput;
+use std::old_io::Command;
+use std::old_io::Reader;
+use std::old_io::process::ProcessOutput;
 use std::collections::HashMap;
 use getopts::{optflag,getopts};
 struct Tab {
     name: String,
-    number: uint,
-    panes: uint,
+    number: usize,
+    panes: usize,
 }
 
 impl Tab {
-    fn new(name: &str, number: uint, panes: uint) -> Tab {
-        Tab { name: from_str(name).unwrap(), number: number, panes: panes }
+    fn new(name: &str, number: usize, panes: usize) -> Tab {
+        Tab { name: name.to_string(), number: number, panes: panes }
     }
 
     fn clone(&self) -> Tab {
@@ -43,11 +44,11 @@ impl Window {
     }
 }
 
-type WindowList = HashMap<uint, Window>;
+type WindowList = HashMap<usize, Window>;
 
 trait WindowSearch {
     fn select_tabs(&self, searchterm: &str) -> Self;
-    fn insert_or_push(&mut self, win: uint, tab: Tab);
+    fn insert_or_push(&mut self, win: usize, tab: Tab);
     fn dump(&self);
     fn get_cmd(&self);
 }
@@ -100,7 +101,7 @@ impl WindowSearch for WindowList {
         return out;
     }
 
-    fn insert_or_push(&mut self, win: uint, tab: Tab) {
+    fn insert_or_push(&mut self, win: usize, tab: Tab) {
         // This is super lurky. Double borrow bug?
         if self.contains_key(&win) {
             match self.get_mut(&win) {
@@ -113,19 +114,20 @@ impl WindowSearch for WindowList {
     }
 }
 
-static WINDOW_RE: regex::Regex = regex!(r"^(\d+):(\d+): (.*) \((\d+) panes\) \[(\d+)x(\d+)\]");
 
 fn output_to_windows(rdr: &str) -> WindowList {
+    // Delurk this when regex! starts working again
+    let WINDOW_RE: regex::Regex = regex!(r"^(\d+):(\d+): (.*) \((\d+) panes\) \[(\d+)x(\d+)\]");
     let mut windows: WindowList = HashMap::new();
 
     for line in rdr.split('\n') {
         if line == "" { return windows }
 
         let cap = WINDOW_RE.captures(line.as_slice()).unwrap();
-        let win_: uint = from_str(cap.at(1)).unwrap();
-        let new_tab = Tab::new(cap.at(3),
-                               from_str::<uint>(cap.at(2)).unwrap(),
-                               from_str::<uint>(cap.at(4)).unwrap());
+        let win_: usize = cap.at(1).unwrap().parse().unwrap();
+        let new_tab = Tab::new(cap.at(3).unwrap(),
+                               cap.at(2).unwrap().parse().unwrap(),
+                               cap.at(4).unwrap().parse().unwrap());
 
 
         windows.insert_or_push(win_, new_tab);
@@ -159,7 +161,7 @@ fn main() {
         optflag("G", "get", "Bring matched window here"),
     ];
 
-    let matches = match getopts(args.tail(), opts) {
+    let matches = match getopts(args.tail(), &opts) {
         Ok(m) => m,
         Err(f) => panic!(f),
     };
