@@ -9,7 +9,7 @@ use std::old_io::Command;
 use std::old_io::Reader;
 use std::old_io::process::ProcessOutput;
 use std::collections::HashMap;
-use getopts::{OptGroup,optflag,getopts,usage};
+use getopts::{Options};
 struct Tab {
     name: String,
     number: usize,
@@ -136,9 +136,9 @@ fn output_to_windows(rdr: &str) -> WindowList {
     return windows;
 }
 
-fn print_usage(opts: &[OptGroup]) {
+fn print_usage(opts: &Options) {
     let brief = "Usage: tinfo [options]";
-    println!("{}", usage(brief, opts));
+    println!("{}", opts.usage(&brief));
 }
 
 #[allow(unused_variables)]
@@ -162,12 +162,11 @@ fn main() {
     let windows = output_to_windows(out.as_slice());
 
     let args = std::os::args();
-    let opts = [
-        optflag("G", "get", "Bring matched window here"),
-        optflag("h", "help", "Show this help"),
-    ];
+    let mut opts = Options::new();
+    opts.optflag("G", "get", "Bring matched window here");
+    opts.optflag("h", "help", "Show this help");
 
-    let matches = match getopts(args.tail(), &opts) {
+    let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
         Err(f) => {
             println!("{}\n", f.to_string());
