@@ -161,7 +161,7 @@ fn main() {
 
     let windows = output_to_windows(out.as_slice());
 
-    let args = std::os::args();
+    let args: Vec<_> = std::env::args().collect();
     let mut opts = Options::new();
     opts.optflag("G", "get", "Bring matched window here");
     opts.optflag("h", "help", "Show this help");
