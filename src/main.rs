@@ -1,3 +1,5 @@
+#![feature(exit_status)]
+
 extern crate regex;
 extern crate getopts;
 
@@ -20,7 +22,7 @@ impl Tab {
     }
 
     fn clone(&self) -> Tab {
-        Tab::new(self.name.as_slice(), self.number, self.panes)
+        Tab::new(&self.name[..], self.number, self.panes)
     }
 }
 
@@ -84,7 +86,7 @@ impl WindowSearch for WindowList {
         for (idx, window) in self.iter() {
             let mut _win: Window = Window::new(vec![]);
             for tab in window.tabs.iter() {
-                match tab.name.as_slice().find_str(searchterm) {
+                match tab.name.find(searchterm) {
                     Some(_) => {
                         let newtab: Tab = (*tab).clone();
                         _win.push(newtab);
@@ -121,7 +123,7 @@ fn output_to_windows(rdr: &str) -> WindowList {
     for line in rdr.split('\n') {
         if line == "" { return windows }
 
-        let cap = WINDOW_RE.captures(line.as_slice()).unwrap();
+        let cap = WINDOW_RE.captures(&line).unwrap();
         let win_: usize = cap.at(1).unwrap().parse().unwrap();
         let new_tab = Tab::new(cap.at(3).unwrap(),
                                cap.at(2).unwrap().parse().unwrap(),
@@ -157,7 +159,7 @@ fn main() {
         Err(e) => panic!("failed to spawn: {}", e),
     };
 
-    let windows = output_to_windows(out.as_slice());
+    let windows = output_to_windows(&out);
 
     let args: Vec<_> = std::env::args().collect();
     let mut opts = Options::new();
@@ -180,7 +182,7 @@ fn main() {
     }
 
     if !matches.free.is_empty() {
-        let searched = windows.select_tabs(matches.free[0].as_slice());
+        let searched = windows.select_tabs(&matches.free[0]);
         if matches.opt_present("G") {
             searched.get_cmd();
         } else {
