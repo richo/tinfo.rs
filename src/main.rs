@@ -5,9 +5,7 @@ macro_rules! regex(
     ($s:expr) => (regex::Regex::new($s).unwrap());
 );
 
-use std::old_io::Command;
-use std::old_io::Reader;
-use std::old_io::process::ProcessOutput;
+use std::process;
 use std::collections::HashMap;
 use getopts::{Options};
 struct Tab {
@@ -74,7 +72,7 @@ impl WindowSearch for WindowList {
             }
 
             for tab in window.tabs.iter() {
-                Command::new("tmux").arg("move-window").arg("-s")
+                process::Command::new("tmux").arg("move-window").arg("-s")
                     .arg(format!("{}:{}", idx, tab.number)).spawn();
                 return;
             }
@@ -143,15 +141,15 @@ fn print_usage(opts: &Options) {
 
 #[allow(unused_variables)]
 fn main() {
-    let out = match Command::new("tmux").arg("list-windows").arg("-a").spawn() {
+    let out = match process::Command::new("tmux").arg("list-windows").arg("-a").spawn() {
         Ok(process) => {
-            let ProcessOutput { status, output, error } =
+            let process::Output { status, stdout, stderr } =
                 match process.wait_with_output() {
                     Ok(o) => o,
                     _ => panic!("Couldn't read tmux list-windows output"),
                 };
 
-            match String::from_utf8(output) {
+            match String::from_utf8(stdout) {
                 Ok(o) => o,
                 _ => panic!("tmux list-windows did not emit valid utf8"),
             }
