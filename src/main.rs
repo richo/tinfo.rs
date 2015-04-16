@@ -143,23 +143,17 @@ fn print_usage(opts: &Options) {
 
 #[allow(unused_variables)]
 fn main() {
-    let out = match process::Command::new("tmux").arg("list-windows").arg("-a").spawn() {
-        Ok(process) => {
-            let process::Output { status, stdout, stderr } =
-                match process.wait_with_output() {
-                    Ok(o) => o,
-                    _ => panic!("Couldn't read tmux list-windows output"),
-                };
-
-            match String::from_utf8(stdout) {
-                Ok(o) => o,
-                _ => panic!("tmux list-windows did not emit valid utf8"),
-            }
-        },
+    let out = match process::Command::new("tmux")
+                                      .arg("list-windows")
+                                      .arg("-a")
+                                      .output() {
+        Ok(output) => output,
         Err(e) => panic!("failed to spawn: {}", e),
     };
 
-    let windows = output_to_windows(&out);
+    let stdout = String::from_utf8_lossy(&out.stdout);
+
+    let windows = output_to_windows(&stdout);
 
     let args: Vec<_> = std::env::args().collect();
     let mut opts = Options::new();
