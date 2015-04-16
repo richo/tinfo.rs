@@ -1,6 +1,6 @@
 [root]
 name = "tinfo"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "getopts 0.2.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
