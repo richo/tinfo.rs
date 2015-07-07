@@ -1,5 +1,3 @@
-#![feature(exit_status)]
-
 extern crate regex;
 extern crate getopts;
 
@@ -165,8 +163,7 @@ fn main() {
         Err(f) => {
             println!("{}\n", f.to_string());
             print_usage(&opts);
-            ::std::env::set_exit_status(1);
-            return;
+            ::std::process::exit(1);
         }
     };
 
