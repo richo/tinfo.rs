@@ -49,6 +49,7 @@ trait WindowSearch {
     fn insert_or_push(&mut self, win: usize, tab: Tab);
     fn dump(&self);
     fn get_cmd(&self);
+    fn attach_cmd(&self);
 }
 
 impl WindowSearch for WindowList {
@@ -76,6 +77,18 @@ impl WindowSearch for WindowList {
                     .arg(format!("{}:{}", idx, tab.number)).spawn();
                 return;
             }
+        }
+    }
+
+    fn attach_cmd(&self) {
+        if self.len() != 1 {
+            panic!("Can only get with a single result");
+        }
+
+        for (idx, _) in self.iter() {
+            process::Command::new("tmux").arg("attach-session").arg("-t")
+                .arg(format!("{}", idx)).spawn();
+            return;
         }
     }
 
@@ -156,6 +169,7 @@ fn main() {
     let args: Vec<_> = std::env::args().collect();
     let mut opts = Options::new();
     opts.optflag("G", "get", "Bring matched window here");
+    opts.optflag("a", "attach", "Attach to matched session");
     opts.optflag("h", "help", "Show this help");
 
     let matches = match opts.parse(&args[1..]) {
@@ -176,6 +190,8 @@ fn main() {
         let searched = windows.select_tabs(&matches.free[0]);
         if matches.opt_present("G") {
             searched.get_cmd();
+        } else if matches.opt_present("a") {
+            searched.attach_cmd();
         } else {
             searched.dump();
         }
