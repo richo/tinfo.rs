@@ -1,5 +1,8 @@
-target/tinfo: src/main.rs
+target/debug/tinfo: src/main.rs
 	cargo build
 
-install: target/debug/tinfo
+target/release/tinfo: src/main.rs
+	cargo build --release
+
+install: target/release/tinfo
 	cp $< /usr/local/bin
