@@ -1,9 +1,9 @@
+#[macro_use]
 extern crate regex;
+#[macro_use]
+extern crate lazy_static;
 extern crate getopts;
 
-macro_rules! regex(
-    ($s:expr) => (regex::Regex::new($s).unwrap());
-);
 
 use std::process;
 use std::collections::HashMap;
@@ -62,7 +62,9 @@ fn build_windowlist() -> WindowList {
         Ok(output) => output,
         Err(e) => panic!("failed to spawn: {}", e),
     };
-    let SESSION_RE: regex::Regex = regex!(r"^(\d+): \d+ windows \(.*\) \[\d+x\d+\]( \(attached\))?");
+    lazy_static! {
+        static ref SESSION_RE: regex::Regex = regex::Regex::new(r"^(\d+): \d+ windows \(.*\) \[\d+x\d+\]( \(attached\))?").unwrap();
+    }
     let mut windows: WindowList = HashMap::new();
 
     for line in String::from_utf8_lossy(&out.stdout).split('\n') {
@@ -151,8 +153,9 @@ impl WindowSearch for WindowList {
                 Ok(output) => output,
                 Err(e) => panic!("failed to spawn: {}", e),
             };
-        // Delurk this when regex! starts working again
-        let WINDOW_RE: regex::Regex = regex!(r"^(\d+):(\d+): (.*) \((\d+) panes\) \[(\d+)x(\d+)\]");
+        lazy_static! {
+            static ref WINDOW_RE: regex::Regex = regex::Regex::new(r"^(\d+):(\d+): (.*) \((\d+) panes\) \[(\d+)x(\d+)\]").unwrap();
+        }
 
         for line in String::from_utf8_lossy(&out.stdout).split('\n') {
             if line == "" { return }

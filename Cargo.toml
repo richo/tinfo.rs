@@ -11,3 +11,4 @@ description = "A frontend to manipulating tmux"
 
 regex = "*"
 getopts = "*"
+lazy_static = "*"
