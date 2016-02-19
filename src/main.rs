@@ -26,11 +26,14 @@ impl Tab {
 
 struct Window {
     pub tabs: Vec<Tab>,
+    pub attached: bool,
 }
 
 impl Window {
-    fn new(tabs: Vec<Tab>) -> Window {
-        Window { tabs: tabs }
+    fn new(tabs: Vec<Tab>, attached: bool) -> Window {
+        Window { tabs: tabs,
+                 attached: attached,
+        }
     }
 
     fn push(&mut self, tab: Tab) {
@@ -46,16 +49,44 @@ type WindowList = HashMap<usize, Window>;
 
 trait WindowSearch {
     fn select_tabs(&self, searchterm: &str) -> Self;
-    fn insert_or_push(&mut self, win: usize, tab: Tab);
+    fn populate(&mut self);
     fn dump(&self);
     fn get_cmd(&self);
     fn attach_cmd(&self);
 }
 
+fn build_windowlist() -> WindowList {
+    let out = match process::Command::new("tmux")
+                                      .arg("list-sessions")
+                                      .output() {
+        Ok(output) => output,
+        Err(e) => panic!("failed to spawn: {}", e),
+    };
+    let SESSION_RE: regex::Regex = regex!(r"^(\d+): \d+ windows \(.*\) \[\d+x\d+\]( \(attached\))?");
+    let mut windows: WindowList = HashMap::new();
+
+    for line in String::from_utf8_lossy(&out.stdout).split('\n') {
+        if line == "" { break }
+
+        let cap = SESSION_RE.captures(&line).unwrap();
+        let win: usize = cap.at(1).unwrap().parse().unwrap();
+        let attached: bool = cap.at(2).is_some();
+        windows.insert(win, Window::new(vec![], attached));
+    }
+
+    windows.populate();
+
+    return windows;
+}
+
 impl WindowSearch for WindowList {
     fn dump(&self) {
         for (idx, window) in self.iter() {
-            println!("Session: {}", idx);
+            print!("Session: {}", idx);
+            if window.attached {
+                print!(" (attached)");
+            }
+            print!("\n");
             for tab in window.tabs.iter() {
                 println!("  {}: {}", tab.number, tab.name);
             }
@@ -74,7 +105,7 @@ impl WindowSearch for WindowList {
 
             for tab in window.tabs.iter() {
                 process::Command::new("tmux").arg("move-window").arg("-s")
-                    .arg(format!("{}:{}", idx, tab.number)).spawn();
+                    .arg(format!("{}:{}", idx, tab.number)).spawn().unwrap();
                 return;
             }
         }
@@ -87,7 +118,7 @@ impl WindowSearch for WindowList {
 
         for (idx, _) in self.iter() {
             process::Command::new("tmux").arg("attach-session").arg("-t")
-                .arg(format!("{}", idx)).spawn();
+                .arg(format!("{}", idx)).spawn().unwrap();
             return;
         }
     }
@@ -95,7 +126,7 @@ impl WindowSearch for WindowList {
     fn select_tabs(&self, searchterm: &str) -> WindowList {
         let mut out: WindowList = HashMap::new();
         for (idx, window) in self.iter() {
-            let mut _win: Window = Window::new(vec![]);
+            let mut _win: Window = Window::new(vec![], window.attached);
             for tab in window.tabs.iter() {
                 match tab.name.find(searchterm) {
                     Some(_) => {
@@ -112,40 +143,35 @@ impl WindowSearch for WindowList {
         return out;
     }
 
-    fn insert_or_push(&mut self, win: usize, tab: Tab) {
-        // This is super lurky. Double borrow bug?
-        if self.contains_key(&win) {
-            match self.get_mut(&win) {
-                Some(window) => { window.push(tab); },
+    fn populate(&mut self) {
+        let out = match process::Command::new("tmux")
+            .arg("list-windows")
+            .arg("-a")
+            .output() {
+                Ok(output) => output,
+                Err(e) => panic!("failed to spawn: {}", e),
+            };
+        // Delurk this when regex! starts working again
+        let WINDOW_RE: regex::Regex = regex!(r"^(\d+):(\d+): (.*) \((\d+) panes\) \[(\d+)x(\d+)\]");
+
+        for line in String::from_utf8_lossy(&out.stdout).split('\n') {
+            if line == "" { return }
+
+            let cap = WINDOW_RE.captures(&line).unwrap();
+            let win_: usize = cap.at(1).unwrap().parse().unwrap();
+            let new_tab = Tab::new(cap.at(3).unwrap(),
+            cap.at(2).unwrap().parse().unwrap(),
+            cap.at(4).unwrap().parse().unwrap());
+
+            match self.get_mut(&win_) {
+                Some(window) => { window.push(new_tab); },
                 None => unreachable!()
             };
-        } else {
-            self.insert(win, Window::new(vec!(tab)));
         }
     }
 }
 
 
-fn output_to_windows(rdr: &str) -> WindowList {
-    // Delurk this when regex! starts working again
-    let WINDOW_RE: regex::Regex = regex!(r"^(\d+):(\d+): (.*) \((\d+) panes\) \[(\d+)x(\d+)\]");
-    let mut windows: WindowList = HashMap::new();
-
-    for line in rdr.split('\n') {
-        if line == "" { return windows }
-
-        let cap = WINDOW_RE.captures(&line).unwrap();
-        let win_: usize = cap.at(1).unwrap().parse().unwrap();
-        let new_tab = Tab::new(cap.at(3).unwrap(),
-                               cap.at(2).unwrap().parse().unwrap(),
-                               cap.at(4).unwrap().parse().unwrap());
-
-
-        windows.insert_or_push(win_, new_tab);
-    }
-
-    return windows;
-}
 
 fn print_usage(opts: &Options) {
     let brief = "Usage: tinfo [options]";
@@ -154,17 +180,7 @@ fn print_usage(opts: &Options) {
 
 #[allow(unused_variables)]
 fn main() {
-    let out = match process::Command::new("tmux")
-                                      .arg("list-windows")
-                                      .arg("-a")
-                                      .output() {
-        Ok(output) => output,
-        Err(e) => panic!("failed to spawn: {}", e),
-    };
-
-    let stdout = String::from_utf8_lossy(&out.stdout);
-
-    let windows = output_to_windows(&stdout);
+    let windows = build_windowlist();
 
     let args: Vec<_> = std::env::args().collect();
     let mut opts = Options::new();
