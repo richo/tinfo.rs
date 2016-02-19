@@ -9,6 +9,6 @@ description = "A frontend to manipulating tmux"
 
 [dependencies]
 
-regex = "*"
-getopts = "*"
-lazy_static = "*"
+regex = "0.*"
+getopts = "0.*"
+lazy_static = "0.*"
