@@ -71,8 +71,8 @@ fn build_windowlist() -> WindowList {
         if line == "" { break }
 
         let cap = SESSION_RE.captures(&line).unwrap();
-        let win: usize = cap.at(1).unwrap().parse().unwrap();
-        let attached: bool = cap.at(2).is_some();
+        let win: usize = cap[1].parse().unwrap();
+        let attached: bool = cap.get(2).is_some();
         windows.insert(win, Window::new(vec![], attached));
     }
 
@@ -161,10 +161,10 @@ impl WindowSearch for WindowList {
             if line == "" { return }
 
             let cap = WINDOW_RE.captures(&line).unwrap();
-            let win_: usize = cap.at(1).unwrap().parse().unwrap();
-            let new_tab = Tab::new(cap.at(3).unwrap(),
-            cap.at(2).unwrap().parse().unwrap(),
-            cap.at(4).unwrap().parse().unwrap());
+            let win_: usize = cap[1].parse().unwrap();
+            let new_tab = Tab::new(&cap[3],
+            cap[2].parse().unwrap(),
+            cap[4].parse().unwrap());
 
             match self.get_mut(&win_) {
                 Some(window) => { window.push(new_tab); },
