@@ -7,6 +7,8 @@ extern crate getopts;
 use std::process;
 use std::collections::HashMap;
 use getopts::{Options};
+
+#[derive(Debug, Clone)]
 struct Tab {
     name: String,
     number: usize,
@@ -17,12 +19,9 @@ impl Tab {
     fn new(name: &str, number: usize, panes: usize) -> Tab {
         Tab { name: name.to_string(), number: number, panes: panes }
     }
-
-    fn clone(&self) -> Tab {
-        Tab::new(&self.name[..], self.number, self.panes)
-    }
 }
 
+#[derive(Debug)]
 struct Window {
     pub tabs: Vec<Tab>,
     pub attached: bool,
@@ -39,7 +38,7 @@ impl Window {
         self.tabs.push(tab);
     }
 
-    fn empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         return self.tabs.len() == 0;
     }
 }
@@ -137,7 +136,7 @@ impl WindowSearch for WindowList {
                     None => {},
                 }
             }
-            if !_win.empty() {
+            if !_win.is_empty() {
                 out.insert(*idx, _win);
             }
         }
@@ -180,7 +179,6 @@ fn print_usage(opts: &Options) {
     println!("{}", opts.usage(&brief));
 }
 
-#[allow(unused_variables)]
 fn main() {
     let windows = build_windowlist();
 
