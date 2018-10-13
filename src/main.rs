@@ -1,12 +1,13 @@
 extern crate regex;
 #[macro_use]
 extern crate lazy_static;
-extern crate getopts;
+extern crate clap;
 
-
+use clap::{Arg, ArgGroup, App, AppSettings};
 use std::process;
 use std::collections::HashMap;
-use getopts::{Options};
+
+pub const VERSION: &'static str = "0.6.0";
 
 #[derive(Debug, Clone)]
 struct Tab {
@@ -174,44 +175,64 @@ impl WindowSearch for WindowList {
 
 
 
-fn print_usage(opts: &Options) {
-    let brief = "Usage: tinfo [options]";
-    println!("{}", opts.usage(&brief));
-}
-
 fn main() {
+    let matches = App::new("tinfo")
+        .setting(AppSettings::TrailingVarArg)
+        .version(VERSION)
+        .author("richö butts <richo@psych0tik.net>")
+        .about("Fetch information about running tmux sessions and windows")
+        .group(ArgGroup::with_name("action")
+               .args(&["get", "attach"])
+               .required(false))
+        .arg(Arg::with_name("search terms")
+             .multiple(true))
+        .arg(Arg::with_name("get")
+             .short("G")
+             .long("get")
+             .help("String match a window and bring it here"))
+        .arg(Arg::with_name("attach")
+             .short("a")
+             .long("attach")
+             .help("Attach to matched session"))
+        // .arg(Arg::with_name("fetch")
+        //      .short("f")
+        //      .long("fetch")
+        //      .help("Fetch a window from it's session:window pair"))
+        .get_matches();
+
     let windows = build_windowlist();
 
-    let args: Vec<_> = std::env::args().collect();
-    let mut opts = Options::new();
-    opts.optflag("G", "get", "Bring matched window here");
-    opts.optflag("a", "attach", "Attach to matched session");
-    opts.optflag("h", "help", "Show this help");
-
-    let matches = match opts.parse(&args[1..]) {
-        Ok(m) => m,
-        Err(f) => {
-            println!("{}\n", f.to_string());
-            print_usage(&opts);
-            ::std::process::exit(1);
-        }
-    };
-
-    if matches.opt_present("h") {
-        print_usage(&opts);
-        return;
-    }
-
-    if !matches.free.is_empty() {
-        let searched = windows.select_tabs(&matches.free[0]);
-        if matches.opt_present("G") {
+    if let Some(searchterms) = matches.values_of("search terms") {
+        let query: String = searchterms.collect();
+        let searched = windows.select_tabs(&query);
+        if matches.is_present("get") {
             searched.get_cmd();
-        } else if matches.opt_present("a") {
+        } else if matches.is_present("attach") {
             searched.attach_cmd();
         } else {
             searched.dump();
         }
     } else {
         windows.dump();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    extern crate toml;
+
+    use super::*;
+    use std::fs::File;
+    use std::io::Read;
+
+    #[test]
+    fn test_versions_all_up_to_date() {
+        let mut fh = File::open("Cargo.toml").unwrap();
+        let mut contents = String::new();
+        fh.read_to_string(&mut contents).unwrap();
+
+        let config = contents.parse::<toml::Value>().unwrap();
+
+        assert_eq!(Some(VERSION), config["package"]["version"].as_str());
     }
 }
