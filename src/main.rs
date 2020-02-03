@@ -61,15 +61,17 @@ fn build_windowlist() -> WindowList {
         Err(e) => panic!("failed to spawn: {}", e),
     };
     lazy_static! {
-        static ref SESSION_RE: regex::Regex = regex::Regex::new(r"^(\d+): \d+ windows \(.*\) \[\d+x\d+\]( \(attached\))?").unwrap();
+        static ref SESSION_RE: regex::Regex = regex::Regex::new(r"^(\d+): \d+ windows \(.*\) \[\d+x\d+\]( \(attached\))?").expect("Compiling regex");
     }
     let mut windows: WindowList = HashMap::new();
 
     for line in String::from_utf8_lossy(&out.stdout).split('\n') {
         if line == "" { break }
 
-        let cap = SESSION_RE.captures(&line).unwrap();
-        let win: usize = cap[1].parse().unwrap();
+        let cap = SESSION_RE.captures(&line)
+            .expect("Session matching");
+        let win: usize = cap[1].parse()
+            .expect("Parsing window number");
         let attached: bool = cap.get(2).is_some();
         windows.insert(win, Window::new(vec![], attached));
     }
@@ -105,7 +107,8 @@ impl WindowSearch for WindowList {
 
             for tab in window.tabs.iter() {
                 process::Command::new("tmux").arg("move-window").arg("-s")
-                    .arg(format!("{}:{}", idx, tab.number)).spawn().unwrap();
+                    .arg(format!("{}:{}", idx, tab.number)).spawn()
+                    .expect("Spawning tmux (Moving window)");
                 return;
             }
         }
@@ -118,7 +121,8 @@ impl WindowSearch for WindowList {
 
         for (idx, _) in self.iter() {
             process::Command::new("tmux").arg("attach-session").arg("-t")
-                .arg(format!("{}", idx)).spawn().unwrap();
+                .arg(format!("{}", idx)).spawn()
+                .expect("Spawning tmux (Attaching session)");
             return;
         }
     }
@@ -152,17 +156,20 @@ impl WindowSearch for WindowList {
                 Err(e) => panic!("failed to spawn: {}", e),
             };
         lazy_static! {
-            static ref WINDOW_RE: regex::Regex = regex::Regex::new(r"^(\d+):(\d+): (.*) \((\d+) panes\) \[(\d+)x(\d+)\]").unwrap();
+            static ref WINDOW_RE: regex::Regex = regex::Regex::new(r"^(\d+):(\d+): (.*) \((\d+) panes\) \[(\d+)x(\d+)\]")
+                .expect("Compiling window regex");
         }
 
         for line in String::from_utf8_lossy(&out.stdout).split('\n') {
             if line == "" { return }
 
-            let cap = WINDOW_RE.captures(&line).unwrap();
-            let win_: usize = cap[1].parse().unwrap();
+            let cap = WINDOW_RE.captures(&line)
+                .expect("Capturing windows");
+            let win_: usize = cap[1].parse()
+                .expect("Parsing window number");
             let new_tab = Tab::new(&cap[3],
-            cap[2].parse().unwrap(),
-            cap[4].parse().unwrap());
+                cap[2].parse().expect("Parsing tab[2]"),
+                cap[4].parse().expect("Prasing tab[4]"));
 
             match self.get_mut(&win_) {
                 Some(window) => { window.push(new_tab); },
