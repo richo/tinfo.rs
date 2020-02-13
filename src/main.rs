@@ -58,13 +58,16 @@ trait WindowSearch {
 }
 
 fn build_windowlist() -> WindowList {
-    let out = match process::Command::new("tmux").arg("list-sessions").output() {
+    let out = match process::Command::new("tmux")
+        .arg("list-sessions")
+        .arg("-F").arg("#{session_name} #{session_windows} #{session_attached}")
+        .output() {
         Ok(output) => output,
         Err(e) => panic!("failed to spawn: {}", e),
     };
     lazy_static! {
         static ref SESSION_RE: regex::Regex =
-            regex::Regex::new(r"^(\d+): \d+ windows \(.*\) \[\d+x\d+\]( \(attached\))?")
+            regex::Regex::new(r"^(\d+) (\d+) (\d+)")
                 .expect("Compiling regex");
     }
     let mut windows: WindowList = HashMap::new();
@@ -75,9 +78,11 @@ fn build_windowlist() -> WindowList {
         }
 
         let cap = SESSION_RE.captures(&line).expect("Session matching");
-        let win: usize = cap[1].parse().expect("Parsing window number");
-        let attached: bool = cap.get(2).is_some();
-        windows.insert(win, Window::new(vec![], attached));
+        let id: usize = cap[1].parse().expect("Parsing window id");
+        let num_windows: usize = cap[2].parse().expect("Parsing window number");
+        let attached: usize = cap[3].parse().expect("Parsing number of attachments");
+        let vec = Vec::with_capacity(num_windows);
+        windows.insert(id, Window::new(vec, attached > 0));
     }
 
     windows.populate();
