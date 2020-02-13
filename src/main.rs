@@ -54,10 +54,11 @@ type WindowList = HashMap<usize, Window>;
 
 trait WindowSearch {
     fn select_tabs(&self, searchterm: &str) -> Self;
-    fn populate(&mut self);
+    fn populate(&mut self) -> Result<(), Error>;
+    // TODO(richo) Stream to dump this into
     fn dump(&self);
-    fn get_cmd(&self);
-    fn attach_cmd(&self);
+    fn get_cmd(&self) -> Result<(), Error>;
+    fn attach_cmd(&self) -> Result<(), Error>;
 }
 
 fn build_windowlist() -> Result<WindowList, Error> {
@@ -87,7 +88,7 @@ fn build_windowlist() -> Result<WindowList, Error> {
         windows.insert(id, Window::new(vec, attached > 0));
     }
 
-    windows.populate();
+    windows.populate()?;
 
     return Ok(windows);
 }
@@ -106,7 +107,8 @@ impl WindowSearch for WindowList {
         }
     }
 
-    fn get_cmd(&self) {
+    #[must_use]
+    fn get_cmd(&self) -> Result<(), Error> {
         if self.len() != 1 {
             panic!("Can only get with a single result");
         }
@@ -121,14 +123,15 @@ impl WindowSearch for WindowList {
                     .arg("move-window")
                     .arg("-s")
                     .arg(format!("{}:{}", idx, tab.number))
-                    .spawn()
-                    .expect("Spawning tmux (Moving window)");
-                return;
+                    .spawn()?;
+                return Ok(());
             }
         }
+        Ok(())
     }
 
-    fn attach_cmd(&self) {
+    #[must_use]
+    fn attach_cmd(&self) -> Result<(), Error> {
         if self.len() != 1 {
             panic!("Can only get with a single result");
         }
@@ -138,10 +141,10 @@ impl WindowSearch for WindowList {
                 .arg("attach-session")
                 .arg("-t")
                 .arg(format!("{}", idx))
-                .spawn()
-                .expect("Spawning tmux (Attaching session)");
-            return;
+                .spawn()?;
+            return Ok(());
         }
+        Ok(())
     }
 
     fn select_tabs(&self, searchterm: &str) -> WindowList {
@@ -164,7 +167,8 @@ impl WindowSearch for WindowList {
         return out;
     }
 
-    fn populate(&mut self) {
+    #[must_use]
+    fn populate(&mut self) -> Result<(), Error> {
         let out = match process::Command::new("tmux")
             .arg("list-windows")
             .arg("-a")
@@ -181,24 +185,21 @@ impl WindowSearch for WindowList {
 
         for line in String::from_utf8_lossy(&out.stdout).split('\n') {
             if line == "" {
-                return;
+                return Ok(());
             }
 
             let cap = WINDOW_RE.captures(&line).expect("Capturing windows");
-            let win_: usize = cap[1].parse().expect("Parsing window number");
+            let win_: usize = cap[1].parse()?;
             let new_tab = Tab::new(
                 &cap[3],
-                cap[2].parse().expect("Parsing tab[2]"),
-                cap[4].parse().expect("Prasing tab[4]"),
+                cap[2].parse()?,
+                cap[4].parse()?,
             );
 
-            match self.get_mut(&win_) {
-                Some(window) => {
-                    window.push(new_tab);
-                }
-                None => unreachable!(),
-            };
+            self.get_mut(&win_).unwrap().push(new_tab);
         }
+
+        Ok(())
     }
 }
 
@@ -233,9 +234,9 @@ fn main() -> Result<(), Error> {
     if !matches.free.is_empty() {
         let searched = windows.select_tabs(&matches.free[0]);
         if matches.opt_present("G") {
-            searched.get_cmd();
+            searched.get_cmd()?;
         } else if matches.opt_present("a") {
-            searched.attach_cmd();
+            searched.attach_cmd()?;
         } else {
             searched.dump();
         }
