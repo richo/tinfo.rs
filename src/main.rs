@@ -2,6 +2,8 @@ extern crate regex;
 #[macro_use]
 extern crate lazy_static;
 extern crate getopts;
+#[macro_use]
+extern crate failure;
 
 use getopts::Options;
 use std::collections::HashMap;
@@ -76,10 +78,11 @@ fn build_windowlist() -> Result<WindowList, Error> {
             break;
         }
 
-        let cap = SESSION_RE.captures(&line).expect("Session matching");
-        let id: usize = cap[1].parse().expect("Parsing window id");
-        let num_windows: usize = cap[2].parse().expect("Parsing window number");
-        let attached: usize = cap[3].parse().expect("Parsing number of attachments");
+        let cap = SESSION_RE.captures(&line)
+            .ok_or(format_err!("Couldn't match line"))?;
+        let id: usize = cap[1].parse()?;
+        let num_windows: usize = cap[2].parse()?;
+        let attached: usize = cap[3].parse()?;
         let vec = Vec::with_capacity(num_windows);
         windows.insert(id, Window::new(vec, attached > 0));
     }
