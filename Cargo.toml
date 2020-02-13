@@ -6,9 +6,11 @@ authors = ["Richo Healey <richo@psych0tik.net>"]
 license = "MIT"
 repository = "https://github.com/richo/tinfo-rs"
 description = "A frontend to manipulating tmux"
+edition = "2018"
 
 [dependencies]
 
 regex = "1.3.4"
 getopts = "0.2.21"
 lazy_static = "1.4.0"
+failure = "0.1.6"

@@ -6,6 +6,7 @@ extern crate getopts;
 use getopts::Options;
 use std::collections::HashMap;
 use std::process;
+use failure::Error;
 
 #[derive(Debug, Clone)]
 struct Tab {
@@ -57,19 +58,17 @@ trait WindowSearch {
     fn attach_cmd(&self);
 }
 
-fn build_windowlist() -> WindowList {
-    let out = match process::Command::new("tmux")
-        .arg("list-sessions")
-        .arg("-F").arg("#{session_name} #{session_windows} #{session_attached}")
-        .output() {
-        Ok(output) => output,
-        Err(e) => panic!("failed to spawn: {}", e),
-    };
+fn build_windowlist() -> Result<WindowList, Error> {
     lazy_static! {
         static ref SESSION_RE: regex::Regex =
             regex::Regex::new(r"^(\d+) (\d+) (\d+)")
                 .expect("Compiling regex");
     }
+
+    let out = process::Command::new("tmux")
+        .arg("list-sessions")
+        .arg("-F").arg("#{session_name} #{session_windows} #{session_attached}")
+        .output()?;
     let mut windows: WindowList = HashMap::new();
 
     for line in String::from_utf8_lossy(&out.stdout).split('\n') {
@@ -87,7 +86,7 @@ fn build_windowlist() -> WindowList {
 
     windows.populate();
 
-    return windows;
+    return Ok(windows);
 }
 
 impl WindowSearch for WindowList {
@@ -205,8 +204,8 @@ fn print_usage(opts: &Options) {
     println!("{}", opts.usage(&brief));
 }
 
-fn main() {
-    let windows = build_windowlist();
+fn main() -> Result<(), Error> {
+    let windows = build_windowlist()?;
 
     let args: Vec<_> = std::env::args().collect();
     let mut opts = Options::new();
@@ -225,7 +224,7 @@ fn main() {
 
     if matches.opt_present("h") {
         print_usage(&opts);
-        return;
+        return Ok(());
     }
 
     if !matches.free.is_empty() {
@@ -240,4 +239,6 @@ fn main() {
     } else {
         windows.dump();
     }
+
+    Ok(())
 }
