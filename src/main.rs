@@ -1,15 +1,15 @@
-extern crate regex;
 #[macro_use]
 extern crate lazy_static;
-extern crate getopts;
 #[macro_use]
 extern crate failure;
 
-use getopts::Options;
 use std::collections::HashMap;
 use std::process;
 use std::io::{self, Write};
+
 use failure::Error;
+use getopts::Options;
+use regex;
 
 #[derive(Debug, Clone)]
 struct Tab {
