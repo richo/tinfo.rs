@@ -8,6 +8,7 @@ extern crate failure;
 use getopts::Options;
 use std::collections::HashMap;
 use std::process;
+use std::io::{self, Write};
 use failure::Error;
 
 #[derive(Debug, Clone)]
@@ -55,8 +56,7 @@ type WindowList = HashMap<usize, Window>;
 trait WindowSearch {
     fn select_tabs(&self, searchterm: &str) -> Self;
     fn populate(&mut self) -> Result<(), Error>;
-    // TODO(richo) Stream to dump this into
-    fn dump(&self);
+    fn dump<W: Write>(&self, w: &mut W) -> io::Result<()>;
     fn get_cmd(&self) -> Result<(), Error>;
     fn attach_cmd(&self) -> Result<(), Error>;
 }
@@ -94,17 +94,19 @@ fn build_windowlist() -> Result<WindowList, Error> {
 }
 
 impl WindowSearch for WindowList {
-    fn dump(&self) {
+    fn dump<W: Write>(&self, w: &mut W) -> io::Result<()> {
+        // TODO(richo) Check results
         for (idx, window) in self.iter() {
-            print!("Session: {}", idx);
+            write!(w, "Session: {}", idx)?;
             if window.attached {
-                print!(" (attached)");
+                write!(w, " (attached)")?;
             }
-            print!("\n");
+            write!(w, "\n")?;
             for tab in window.tabs.iter() {
-                println!("  {}: {}", tab.number, tab.name);
+                write!(w, "  {}: {}\n", tab.number, tab.name)?;
             }
         }
+        Ok(())
     }
 
     #[must_use]
@@ -210,6 +212,7 @@ fn print_usage(opts: &Options) {
 
 fn main() -> Result<(), Error> {
     let windows = build_windowlist()?;
+    let mut stdout = io::stdout();
 
     let args: Vec<_> = std::env::args().collect();
     let mut opts = Options::new();
@@ -238,10 +241,10 @@ fn main() -> Result<(), Error> {
         } else if matches.opt_present("a") {
             searched.attach_cmd()?;
         } else {
-            searched.dump();
+            searched.dump(&mut stdout)?;
         }
     } else {
-        windows.dump();
+        windows.dump(&mut stdout)?;
     }
 
     Ok(())
