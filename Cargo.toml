@@ -6,7 +6,7 @@ authors = ["Richo Healey <richo@psych0tik.net>"]
 license = "MIT"
 repository = "https://github.com/richo/tinfo-rs"
 description = "A frontend to manipulating tmux"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 
